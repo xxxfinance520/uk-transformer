@@ -7,9 +7,11 @@ import "../lib/omniverse-aa/lib/Types.sol";
 contract OmniverseTransformerBeaconTest is OmniverseUKTransformerBeacon {
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
-    constructor(bytes32 assetId, address localToken, bytes memory uncompressedPublicKey, Types.UTXO[] memory utxos,
-        address _poseidon, address _eip712) OmniverseUKTransformerBeacon(assetId, localToken, uncompressedPublicKey, utxos, _poseidon, _eip712) {
+    constructor(address _sysConfig, bytes memory _AASignerPubkey,
+        bytes32 _assetId, address _localToken, Types.UTXO[] memory _utxos, address _poseidon, address _eip712)
+        OmniverseUKTransformerBeacon(_sysConfig, _AASignerPubkey, _assetId, _localToken, _utxos, _poseidon, _eip712) {
     }
+
 
     function setLocalEntry(address _localEntry) public {
         sysConfig.localEntry = _localEntry;

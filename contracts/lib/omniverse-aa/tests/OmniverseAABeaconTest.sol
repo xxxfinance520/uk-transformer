@@ -4,7 +4,8 @@ pragma solidity ^0.8.24;
 import "../OmniverseAABeacon.sol";
 
 contract OmniverseAABeaconTest is OmniverseAABeacon {
-    constructor(bytes memory uncompressedPublicKey, Types.UTXO[] memory utxos, address _poseidon, address _eip712) OmniverseAABeacon(uncompressedPublicKey, utxos, _poseidon, _eip712) {
+    constructor(address _sysConfig, bytes memory _AASigner, Types.UTXO[] memory _utxos, address _poseidon, address _eip712)
+        OmniverseAABeacon(_sysConfig, _AASigner, _utxos, _poseidon, _eip712) {
         
     }
 
@@ -26,5 +27,12 @@ contract OmniverseAABeaconTest is OmniverseAABeacon {
 
     function onTransfer(bytes32 txid, address signer, Types.Transfer memory data, bytes memory customData) internal override {
         
+    }
+
+    /**
+     * @notice Handles an omniverse transaction sent from global exec server
+     */
+    function handleOmniverseTx(OmniverseTx calldata omniTx, bytes32[] calldata merkleProof, bytes calldata signerPubkey, bytes calldata customData) external{
+        _handleOmniverseTx(omniTx, merkleProof, signerPubkey, customData);
     }
 }

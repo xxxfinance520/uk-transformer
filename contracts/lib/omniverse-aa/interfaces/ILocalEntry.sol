@@ -34,6 +34,13 @@ interface ILocalEntry {
     function getPubkeys(address AAContract) external view returns (bytes[] memory pubkeys);
 
     /**
+     * @notice Returns the Omniverse AA address bound with the specified public key
+     * @param pubkey The public key to query
+     * @return AAContract The Omniverse AA address
+     */
+    function getAAContract(bytes calldata pubkey) external view returns (address AAContract);
+
+    /**
      * @notice The AA contract submits signed tx to the local entry contract
      * @param signedTx Signed omniverse transaction
      */
@@ -54,4 +61,10 @@ interface ILocalEntry {
      * @return signedTx The signed transction
      */
     function getTransactionByIndex(uint256 index) external view returns (address AAContract, SignedTx memory signedTx);
+
+    /**
+     * @notice Returns total transaction number
+     * @return number Transaction number
+     */
+    function getTransactionNumber() external view returns (uint256 number);
 }

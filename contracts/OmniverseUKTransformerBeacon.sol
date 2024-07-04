@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./lib/omniverse-aa/lib/Types.sol";
 import "./lib/omniverse-aa/OmniverseAABeacon.sol";
@@ -11,13 +12,13 @@ import "./EnumerableTxRecord.sol";
 
 uint256 constant PAGE_NUM = 10;
 
-
-contract OmniverseUKTransformerBeacon is OmniverseAABeacon, IOmniverseUKTransformerBeacon {
+contract OmniverseUKTransformerBeacon is Ownable,OmniverseAABeacon, IOmniverseUKTransformerBeacon {
     using EnumerableTxRecord for EnumerableTxRecord.Bytes32ToOmniToLocalRecord;
     using EnumerableSet for EnumerableSet.Bytes32Set;
-
-    uint128 constant K_PRICE = 2e8;
-    uint128 constant PRICE_DECIMAL_NUM = 1e8;
+    // price of k
+    uint128 private kPrice = 1e7;
+    // the denominator of price
+    uint128 private denominatorOfPrice = 1e8;
     // Omniverse asset id
     bytes32 omniAssetId;
     // ERC20 token address
@@ -42,39 +43,47 @@ contract OmniverseUKTransformerBeacon is OmniverseAABeacon, IOmniverseUKTransfor
      */
     error PublicKeyNotMatch(bytes32 pubKey, bytes32 signer);
 
-    constructor(bytes32 assetId, address localToken, bytes memory uncompressedPublicKey, Types.UTXO[] memory utxos,
-        address _poseidon, address _eip712) OmniverseAABeacon(uncompressedPublicKey, utxos, _poseidon, _eip712) {
-            omniAssetId = assetId;
-            localTokenAddress = localToken;
+    constructor(address _sysConfig, bytes memory _AASignerPubkey,
+        bytes32 _assetId, address _localToken, Types.UTXO[] memory _utxos, address _poseidon, address _eip712)
+       Ownable(msg.sender) OmniverseAABeacon(_sysConfig, _AASignerPubkey, _utxos, _poseidon, _eip712) {
+            omniAssetId = _assetId;
+            localTokenAddress = _localToken;
     }
-
+    
     /**
-     * @notice See {OmniverseAABeacon - onTransfer}
-     * Called when an omniverse transaction is Transfer
-     * @param txid The Omniverse transaction id
-     * @param signer The corresponding ETH address of the Omniverse signer
-     * @param data Transfer data
-     * @param customData Custom data submitted by user
-     */
-    function onTransfer(bytes32 txid, address signer, Types.Transfer memory data, bytes memory customData) internal virtual override {
-    }
-
-     /**
      * @notice See {IOmniverseUKTransformerBeacon - getKprice}
      * Returns the price of kToken 
      * @return kprice price of kToken 
      */
     function getKprice() public view returns( uint128) {
-        return K_PRICE;
+        return kPrice;
+    }
+
+     /**
+     * @notice See {IOmniverseUKTransformerBeacon - setKprice}
+     * set the price of kToken 
+     * @param _kPrice new price of kToken 
+     */
+    function setKprice(uint128 _kPrice)  external onlyOwner {
+       kPrice  = _kPrice;
     }
 
     /**
-     * @notice See {IOmniverseUKTransformerBeacon - getKprice}
-     * Returns the price of kToken 
-     * @return kprice price of kToken 
+     * @notice See {IOmniverseUKTransformerBeacon - getDenominatorOfPrice}
+     * Returns the denominator of price
+     * @return denominatorOfPrice 
      */
-    function getKprieDecimalVal() public view returns( uint128) {
-        return K_PRICE;
+    function getDenominatorOfPrice() public view returns( uint128) {
+        return denominatorOfPrice;
+    }
+    
+    /**
+     * @notice See {IOmniverseUKTransformerBeacon - setKprice}
+     * Set the new denominator of price 
+     * @param _denominatorOfPrice new denominator of price 
+     */
+    function setDenominatorOfPrice(uint128 _denominatorOfPrice) external onlyOwner  {
+       denominatorOfPrice  = _denominatorOfPrice;
     }
 
     /**
@@ -102,8 +111,8 @@ contract OmniverseUKTransformerBeacon is OmniverseAABeacon, IOmniverseUKTransfor
      * @param amount How many tokens will be converted to Omniverse assets
      */
     function convertToOmniverse(bytes32 recipient, uint128 amount) external {
-        uint128 u_amount = amount * getKprice()/PRICE_DECIMAL_NUM;
-        IERC20(localTokenAddress).transferFrom(msg.sender, address(this), u_amount);
+        uint128 uAmount = amount * kPrice / denominatorOfPrice;
+        IERC20(localTokenAddress).transferFrom(msg.sender, address(this), uAmount);
         Types.Output[] memory outputs = new Types.Output[](1);
         outputs[0] = Types.Output(
             recipient,

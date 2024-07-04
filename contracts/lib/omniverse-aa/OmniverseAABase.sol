@@ -7,15 +7,7 @@ import "./lib/Types.sol";
 import "./lib/EnumerableUTXOMap.sol";
 import "./lib/Utils.sol";
 import "./interfaces/IOmniverseEIP712.sol";
-
-uint128 constant GAS_FEE = 10;
-uint256 constant MAX_UTXO = 100;
-bytes32 constant GAS_ASSET_ID = 0;
-bytes32 constant GAS_RECEIVER = hex"1234567812345678123456781234567812345678123456781234567812345678";
-address constant STATE_KEEPER = address(0);
-address constant LOCAL_ENTRY = address(0);
-uint8 constant DECIMALS = 18;
-uint8 constant TOKEN_NAME_LENGTH_LIMIT = 24;
+import "./interfaces/IOmniverseSysConfigAA.sol";
 
 abstract contract OmniverseAABase is IOmniverseAA {
     using EnumerableUTXOMap for EnumerableUTXOMap.Bytes32ToUTXOMap;
@@ -25,9 +17,9 @@ abstract contract OmniverseAABase is IOmniverseAA {
     // next index of transation to be signed
     uint256 nextTxIndex;
     // public key
-    bytes32 pubkey;
-    // the corresponding address of the pubkey
-    address addrPubkey;
+    bytes32 AASignerPubkey;
+    // the corresponding address of the public key
+    address AASignerAddr;
     // asset id mapping to UTXO set
     mapping(bytes32 => EnumerableUTXOMap.Bytes32ToUTXOMap) assetIdMapToUTXOSet;
     // used to calculate Poseidon hash
@@ -59,6 +51,18 @@ abstract contract OmniverseAABase is IOmniverseAA {
      * @param sender The sender calling the contract
      */
     error SenderNotRegistered(address sender);
+
+    /**
+     * @notice Throws when it failed to register signer
+     * @param boundSigner The signer public key bound with the contract
+     */
+    error RegisterErrorWithSignerNotExpected(bytes32 boundSigner);
+
+    /**
+     * @notice Throws when the public key of AA signer already registered
+     * @param pubkey The signer public key bound with the contract
+     */
+    error AASignerPublicKeyAlreadyRegistered(bytes32 pubkey);
 
     /**
      * @notice Throws when a transaction submitted to the contract not exists
@@ -94,35 +98,40 @@ abstract contract OmniverseAABase is IOmniverseAA {
      */
     error TokenNameLengthExceedLimit(uint256 nameLength);
 
-    constructor(bytes memory uncompressedPublicKey, Types.UTXO[] memory utxos, address _poseidon, address _eip712) {
+    constructor(address _sysConfig, bytes memory _AASignerPubkey, Types.UTXO[] memory _utxos, address _poseidon, address _eip712) {
         poseidon = IPoseidon(_poseidon);
         eip712 = IOmniverseEIP712(_eip712);
 
-        bytes32 _pubkey;
-        assembly {
-            _pubkey := mload(add(uncompressedPublicKey, 0x20))
-        }
-        pubkey = _pubkey;
-        addrPubkey = Utils.pubKeyToAddress(uncompressedPublicKey);
-
-        for (uint i = 0; i < utxos.length; i++) {
+        for (uint i = 0; i < _utxos.length; i++) {
             bytes32 key = keccak256(
-                abi.encodePacked(utxos[i].txid, utxos[i].index)
+                abi.encodePacked(_utxos[i].txid, _utxos[i].index)
             );
-            assetIdMapToUTXOSet[utxos[i].assetId].set(key, utxos[i]);
+            assetIdMapToUTXOSet[_utxos[i].assetId].set(key, _utxos[i]);
         }
 
         sysConfig = Types.SystemConfig(
             Types.FeeConfig(
-                GAS_ASSET_ID,
-                GAS_RECEIVER,
-                GAS_FEE
+                IOmniverseSysConfigAA(_sysConfig).gasAssetId(),
+                IOmniverseSysConfigAA(_sysConfig).gasRecipient(),
+                IOmniverseSysConfigAA(_sysConfig).gasFee()
             ),
-            MAX_UTXO,
-            DECIMALS,
-            STATE_KEEPER,
-            LOCAL_ENTRY
+            IOmniverseSysConfigAA(_sysConfig).maxUTXONumber(),
+            IOmniverseSysConfigAA(_sysConfig).decimals(),
+            IOmniverseSysConfigAA(_sysConfig).tokenNameLimit(),
+            IOmniverseSysConfigAA(_sysConfig).stateKeeper(),
+            IOmniverseSysConfigAA(_sysConfig).localEntry()
         );
+
+        bytes32 _pubkey;
+        assembly {
+            _pubkey := mload(add(_AASignerPubkey, 32))
+        }
+
+        AASignerPubkey = _pubkey;
+
+        if (ILocalEntry(sysConfig.localEntry).getAAContract(_AASignerPubkey) != address(0)) {
+            revert AASignerPublicKeyAlreadyRegistered(AASignerPubkey);
+        }
     }
 
     /**
@@ -131,7 +140,7 @@ abstract contract OmniverseAABase is IOmniverseAA {
      * @param signature The signature for the transaction
      */
     function submitTx(uint256 txIndex, bytes calldata signature) external {
-        if (addrPubkey != msg.sender) {
+        if (AASignerAddr != msg.sender) {
             revert SenderNotRegistered(msg.sender);
         }
 
@@ -171,7 +180,7 @@ abstract contract OmniverseAABase is IOmniverseAA {
      * @return publicKey Public keys of the AA contract
      */
     function getPubkey() external view returns (bytes32 publicKey) {
-        return pubkey;
+        return AASignerPubkey;
     }
 
     /**
@@ -187,6 +196,29 @@ abstract contract OmniverseAABase is IOmniverseAA {
     }
 
     /**
+     * @notice Register AA to Local Entry contract
+     * @param uncompressedPublicKey Uncompress public key
+     * @param signature The signature signed by AA private key
+     */
+    function register(bytes calldata uncompressedPublicKey, bytes calldata signature) public {
+        bytes32 _pubkey;
+        assembly {
+            _pubkey := calldataload(add(uncompressedPublicKey.offset, 0))
+        }
+        
+        if (_pubkey != AASignerPubkey) {
+            revert RegisterErrorWithSignerNotExpected(AASignerPubkey);
+        }
+        AASignerAddr = Utils.pubKeyToAddress(uncompressedPublicKey);
+
+        bytes[] memory publicKeys = new bytes[](1);
+        publicKeys[0] = uncompressedPublicKey;
+        bytes[] memory signatures = new bytes[](1);
+        signatures[0] = signature;
+        ILocalEntry(sysConfig.localEntry).register(publicKeys, signatures);
+    }
+
+    /**
      * @notice Update UTXOs stored in the contract
      * @param assetId The asset id of these outputs
      * @param txid The new transaction id
@@ -198,12 +230,15 @@ abstract contract OmniverseAABase is IOmniverseAA {
         // update UTXOs
         // remove old UTXOs
         for (uint i = 0; i < inputs.length; i++) {
-            UTXOs.remove(inputs[i].txid);
+            bytes32 key = keccak256(
+                abi.encodePacked(inputs[i].txid, inputs[i].index)
+            );
+            UTXOs.remove(key);
         }
 
         // add new UTXOs
         for (uint64 i = 0; i < outputs.length; i++) {
-            if (outputs[i].omniAddress != pubkey) {
+            if (outputs[i].omniAddress != AASignerPubkey) {
                 continue;
             }
             
@@ -211,7 +246,7 @@ abstract contract OmniverseAABase is IOmniverseAA {
                 abi.encodePacked(txid, i)
             );
             UTXOs.set(key, Types.UTXO(
-                pubkey,
+                AASignerPubkey,
                 assetId,
                 txid,
                 i,
@@ -267,7 +302,7 @@ abstract contract OmniverseAABase is IOmniverseAA {
             gasOutputs = new Types.Output[](extraOutputs.length + 2);
             // charge
             gasOutputs[extraOutputs.length + 1] = Types.Output(
-                pubkey,
+                AASignerPubkey,
                 inputGas - neededGasFee
             );
         }
@@ -335,7 +370,7 @@ abstract contract OmniverseAABase is IOmniverseAA {
             outputs = new Types.Output[](outputsNeeded.length + 1);
             // charge
             outputs[outputsNeeded.length] = Types.Output(
-                pubkey,
+                AASignerPubkey,
                 inputAmount - neededAmount
             );
         }
@@ -358,7 +393,7 @@ abstract contract OmniverseAABase is IOmniverseAA {
     function _constructDeploy(Types.Metadata memory metadata) internal returns (bytes32 txid, Types.Deploy memory deployTx) {
         (Types.Input[] memory gasInputs, Types.Output[] memory gasOutputs) = _getGas(new Types.Output[](0));
 
-        if (bytes(metadata.name).length > TOKEN_NAME_LENGTH_LIMIT) {
+        if (bytes(metadata.name).length > sysConfig.tokenNameLimit) {
             revert TokenNameLengthExceedLimit(bytes(metadata.name).length);
         }
 

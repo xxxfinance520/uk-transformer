@@ -6,7 +6,7 @@ import "./interfaces/IStateKeeperBeacon.sol";
 import "./lib/Utils.sol";
 import "./lib/Types.sol";
 
-contract OmniverseAABeacon is OmniverseAABase {
+abstract contract OmniverseAABeacon is OmniverseAABase {
     /**
      * @notice Throws when transaction not exists in state keeper
      * @param txid The transaction id
@@ -19,7 +19,8 @@ contract OmniverseAABeacon is OmniverseAABase {
      */
     error TransactionAlreadyHandled(bytes32 txid);
 
-    constructor(bytes memory uncompressedPublicKey, Types.UTXO[] memory utxos, address _poseidon, address _eip712) OmniverseAABase(uncompressedPublicKey, utxos, _poseidon, _eip712) {
+    constructor(address _sysConfig, bytes memory  _AASigner, Types.UTXO[] memory _utxos, address _poseidon, address _eip712)
+        OmniverseAABase(_sysConfig, _AASigner, _utxos, _poseidon, _eip712) {
     }
 
     /**

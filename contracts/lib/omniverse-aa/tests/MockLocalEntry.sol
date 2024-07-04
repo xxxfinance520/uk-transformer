@@ -5,8 +5,11 @@ import "../interfaces/ILocalEntry.sol";
 
 contract MockLocalEntry is ILocalEntry {
     bool public submitRet;
-
+    bool registered;
+    uint256 txNumber;
     error SubmitToLocalEntryFailed();
+
+    error SenderNotRegistered(address sender);
 
     constructor() {
         submitRet = true;
@@ -21,7 +24,7 @@ contract MockLocalEntry is ILocalEntry {
      * @param pubkeys Public keys of AA contract
      */
     function register(bytes[] calldata pubkeys, bytes[] calldata signatures) external {
-
+        registered = true;
     }
 
     /**
@@ -31,6 +34,18 @@ contract MockLocalEntry is ILocalEntry {
      */
     function getPubkeys(address AAContract) external view returns (bytes[] memory pubkeys) {
 
+    }/**
+     * @notice Returns the Omniverse AA address bound with the specified public key
+     * @param pubkey The public key to query
+     * @return AAContract The Omniverse AA address
+     */
+    function getAAContract(bytes calldata pubkey) external view returns (address AAContract) {
+        if (registered) {
+            return address(this);
+        }
+        else {
+            return address(0);
+        }
     }
 
     /**
@@ -38,9 +53,15 @@ contract MockLocalEntry is ILocalEntry {
      * @param signedTx Signed omniverse transaction
      */
     function submitTx(SignedTx calldata signedTx) external {
+        if (!registered) {
+            revert SenderNotRegistered(msg.sender);
+        }
+
         if (!submitRet) {
             revert SubmitToLocalEntryFailed();
         }
+
+        txNumber++;
     }
 
     /**
@@ -62,4 +83,7 @@ contract MockLocalEntry is ILocalEntry {
     function getTransactionByIndex(uint256 index) external view returns (address AAContract, SignedTx memory signedTx) {
 
     }
-}
+
+    function getTransactionNumber() external view returns (uint256 number) {
+        number = txNumber;
+    }}

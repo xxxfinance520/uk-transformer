@@ -3,3 +3,6 @@ cache
 ignition
 node_modules
 typechain-types
+out
+lib
+cache_forge

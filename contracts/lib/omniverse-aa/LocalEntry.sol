@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-import '@openzeppelin/contracts/utils/Strings.sol';
-import './interfaces/ILocalEntry.sol';
-import './lib/Utils.sol';
+import "@openzeppelin/contracts/utils/Strings.sol";
+import "./interfaces/ILocalEntry.sol";
+import "./lib/Utils.sol";
 
-string constant PERSONAL_SIGN_PREFIX = '\x19Ethereum Signed Message:\n';
-string constant OMNIVERSE_AA_SC_PREFIX = 'Register to Omniverse AA:';
+string constant PERSONAL_SIGN_PREFIX = "\x19Ethereum Signed Message:\n";
+string constant OMNIVERSE_AA_SC_PREFIX = "Register to Omniverse AA: ";
 
 contract LocalEntry is ILocalEntry {
     mapping(address => bytes[]) omniverseAAMapToPubkeys;
@@ -26,11 +26,7 @@ contract LocalEntry is ILocalEntry {
      * @param signature The signature which failed to verify
      * @param omniverseAA The omniverse AA contract address
      */
-    error FailedToVerifySignature(
-        bytes publicKey,
-        bytes signature,
-        address omniverseAA
-    );
+    error FailedToVerifySignature(bytes publicKey, bytes signature, address omniverseAA);
 
     /**
      * @notice Throws when any public key already registered
@@ -56,16 +52,15 @@ contract LocalEntry is ILocalEntry {
      */
     error SignatureEmpty(bytes32 txid);
 
-    constructor() {}
+    constructor() {
+
+    }
 
     /**
      * @notice The AA contract registers pubkeys to local entry contract
      * @param pubkeys Public keys of AA contract
      */
-    function register(
-        bytes[] calldata pubkeys,
-        bytes[] calldata signatures
-    ) external {
+    function register(bytes[] calldata pubkeys, bytes[] calldata signatures) external {
         if (pubkeys.length != signatures.length) {
             revert LengthOfPublickeysAndSignaturesNotEqual();
         }
@@ -77,27 +72,13 @@ contract LocalEntry is ILocalEntry {
         }
 
         // verify signatures
+        bytes memory rawData = abi.encodePacked(OMNIVERSE_AA_SC_PREFIX, "0x", Utils.bytesToHexString(abi.encodePacked(msg.sender)), ", chain id: ", Strings.toString(block.chainid));
         for (uint i = 0; i < pubkeys.length; i++) {
-            bytes memory rawData = abi.encodePacked(
-                OMNIVERSE_AA_SC_PREFIX,
-                '0x',
-                Utils.bytesToHexString(abi.encodePacked(msg.sender))
-            );
-            bytes32 hash = keccak256(
-                abi.encodePacked(
-                    PERSONAL_SIGN_PREFIX,
-                    bytes(Strings.toString(rawData.length)),
-                    rawData
-                )
-            );
+            bytes32 hash = keccak256(abi.encodePacked(PERSONAL_SIGN_PREFIX, bytes(Strings.toString(rawData.length)), rawData));
             address pkAddress = recoverAddress(hash, signatures[i]);
             address senderAddress = Utils.pubKeyToAddress(pubkeys[i]);
             if (pkAddress != senderAddress) {
-                revert FailedToVerifySignature(
-                    pubkeys[i],
-                    signatures[i],
-                    msg.sender
-                );
+                revert FailedToVerifySignature(pubkeys[i], signatures[i], msg.sender);
             }
             omniverseAAMapToPubkeys[msg.sender].push(pubkeys[i]);
             pubkeyMapToOmniverseAA[pubkeys[i]] = msg.sender;
@@ -109,10 +90,17 @@ contract LocalEntry is ILocalEntry {
      * @param omniverseAA The address of the AA contract
      * @return pubkeys Public keys of the AA contract
      */
-    function getPubkeys(
-        address omniverseAA
-    ) external view returns (bytes[] memory pubkeys) {
+    function getPubkeys(address omniverseAA) external view returns (bytes[] memory pubkeys) {
         return omniverseAAMapToPubkeys[omniverseAA];
+    }
+
+    /**
+     * @notice Returns the Omniverse AA address bound with the specified public key
+     * @param pubkey The public key to query
+     * @return AAContract The Omniverse AA address
+     */
+    function getAAContract(bytes calldata pubkey) external view returns (address AAContract) {
+        AAContract = pubkeyMapToOmniverseAA[pubkey];
     }
 
     /**
@@ -124,7 +112,7 @@ contract LocalEntry is ILocalEntry {
             revert SenderNotRegistered(msg.sender);
         }
 
-        if (keccak256(signedTx.signature) == keccak256(bytes(''))) {
+        if (keccak256(signedTx.signature) == keccak256(bytes(""))) {
             revert SignatureEmpty(signedTx.txid);
         }
 
@@ -149,9 +137,7 @@ contract LocalEntry is ILocalEntry {
      * @return omniverseAA The Omniverse AA contract which transaction is sent from
      * @return signedTx The signed transction
      */
-    function getTransaction(
-        bytes32 txid
-    ) public view returns (address omniverseAA, SignedTx memory signedTx) {
+    function getTransaction(bytes32 txid) public view returns (address omniverseAA, SignedTx memory signedTx) {
         omniverseAA = txidMapToOmniverseAA[txid];
         signedTx = txidMapToSignedOmniverseTx[txid];
     }
@@ -162,20 +148,15 @@ contract LocalEntry is ILocalEntry {
      * @return omniverseAA The Omniverse AA contract which transaction is sent from
      * @return signedTx The signed transction
      */
-    function getTransactionByIndex(
-        uint256 index
-    ) external view returns (address omniverseAA, SignedTx memory signedTx) {
+    function getTransactionByIndex(uint256 index) external view returns (address omniverseAA, SignedTx memory signedTx) {
         bytes32 txid = txidArray[index];
-        (omniverseAA, signedTx) = getTransaction(txid);
+        (omniverseAA, signedTx)  = getTransaction(txid);
     }
 
     /**
      * @notice Recover the address
      */
-    function recoverAddress(
-        bytes32 _hash,
-        bytes memory _signature
-    ) internal pure returns (address) {
+    function recoverAddress(bytes32 _hash, bytes memory _signature) internal pure returns (address) {
         uint8 v;
         bytes32 r;
         bytes32 s;
@@ -186,5 +167,13 @@ contract LocalEntry is ILocalEntry {
         }
         address recovered = ecrecover(_hash, v, r, s);
         return recovered;
+    }
+
+    /**
+     * @notice Returns total transaction number
+     * @return number Transaction number
+     */
+    function getTransactionNumber() external view returns (uint256 number) {
+        number = txidArray.length;
     }
 }

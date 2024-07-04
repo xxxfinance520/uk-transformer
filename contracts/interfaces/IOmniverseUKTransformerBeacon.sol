@@ -38,6 +38,18 @@ interface IOmniverseUKTransformerBeacon {
      */
     function getKprice() external view returns (uint128 kprice);
 
+     /**
+     * @notice Set the price of kToken 
+     * @param _kPrice new price of kToken 
+     */
+    function setKprice(uint128 _kPrice) external;
+
+    /**
+     * @notice Returns the denominator of price
+     * @return denominatorOfPrice 
+     */
+    function getDenominatorOfPrice() external view returns( uint128);
+
     /**
      * @notice Returns the Omniverse token asset id supported by the transformer
      * @return assetId Omniverse token asset id

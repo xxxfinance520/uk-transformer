@@ -4,7 +4,11 @@
 1. 通过合约升级KARANA价格不可更改
 2. 升级为KARANA后不可通过合约降级为USDT
 3. KARANA/USDT价格精度低于0.000000001
+## 问题
+1. LocalEntry在相同的链只有一个合约地址，需要localEntry的地址？
+2. 需要Local网络的rpc和gas费用
+3. 还需要一个服务器
 ## test
 ```bash
-npx hardhat test
+forge test -vvv
 ```

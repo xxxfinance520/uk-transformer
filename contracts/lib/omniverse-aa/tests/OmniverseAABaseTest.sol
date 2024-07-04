@@ -6,7 +6,8 @@ import "../OmniverseAABase.sol";
 import "../lib/Types.sol";
 
 contract OmniverseAABaseTest is OmniverseAABase {
-    constructor(bytes memory uncompressedPublicKey, Types.UTXO[] memory utxos, address _poseidon, address _eip712) OmniverseAABase(uncompressedPublicKey, utxos, _poseidon, _eip712) {
+    constructor(address _sysConfig, bytes memory _AASigner, Types.UTXO[] memory _utxos, address _poseidon, address _eip712)
+        OmniverseAABase(_sysConfig, _AASigner, _utxos, _poseidon, _eip712) {
     }
 
     function handleOmniverseTx(OmniverseTx calldata omniTx, bytes32[] calldata merkleProof, bytes calldata signerPubkey, bytes calldata customData) external {
@@ -22,38 +23,14 @@ contract OmniverseAABaseTest is OmniverseAABase {
     }
 
     function deploy(Types.Metadata calldata metadata) external {
-        (bytes32 txid, Types.Deploy memory deployTx) = _constructDeploy(metadata);
-        bytes memory txData = abi.encode(deployTx);
-        unsignedTxs.push(OmniverseTxWithTxid(
-            txid,
-            OmniverseTx(
-                Types.TxType.Deploy,
-                txData
-            )
-        ));
+        _constructDeploy(metadata);
     }
 
     function mint(bytes32 assetId, Types.Output[] calldata outputs) external {
-        (bytes32 txid, Types.Mint memory mintTx) = _constructMint(assetId, outputs);
-        bytes memory txData = abi.encode(mintTx);
-        unsignedTxs.push(OmniverseTxWithTxid(
-            txid,
-            OmniverseTx(
-                Types.TxType.Mint,
-                txData
-            )
-        ));
+        _constructMint(assetId, outputs);
     }
 
     function transfer(bytes32 assetId, Types.Output[] calldata outputs) external {
-        (bytes32 txid, Types.Transfer memory transferTx) = _constructTransfer(assetId, outputs);
-        bytes memory txData = abi.encode(transferTx);
-        unsignedTxs.push(OmniverseTxWithTxid(
-            txid,
-            OmniverseTx(
-                Types.TxType.Transfer,
-                txData
-            )
-        ));
+        _constructTransfer(assetId, outputs);
     }
 }

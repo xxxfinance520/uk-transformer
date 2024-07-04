@@ -114,198 +114,41 @@ function getTransferTx(sender: string, receiver: string): utils.Transfer {
     };
 }
 
-describe('Omniverse Transformer', function () {
-    // We define a fixture to reuse the same setup in every test.
-    // We use loadFixture to run this setup once, snapshot that state,
-    // and reset Hardhat Network to that snapshot in every test.
-    async function deployOmniverseTransformer() {
-        // Contracts are deployed using the first signer/account by default
-        const wallets = getWallets();
-        const signers = await hre.ethers.getSigners();
+describe('GetWallets', function () {
 
-        // EIP712
-        const OmniverseEIP712 =
-            await hre.ethers.getContractFactory('OmniverseEIP712');
-        const eip712 = await OmniverseEIP712.deploy(
-            DOMAIN.name,
-            DOMAIN.version,
-            DOMAIN.chainId,
-            DOMAIN.verifyingContract
-        );
 
-        // Poseidon
-        const Poseidon = await hre.ethers.getContractFactory('Poseidon');
-        const poseidon = await Poseidon.deploy();
-
-        // ERC20 token
-        const Token = await hre.ethers.getContractFactory('Token');
-        const token = await Token.deploy();
-
-        // Omniverse transformer
-        const OmniverseTransformerBeacon = await hre.ethers.getContractFactory(
-            'OmniverseTransformerBeaconTest'
-        );
-        const gasUTXOs = generateUTXOs(GAS_ASSET_ID, wallets[0].compressed);
-        const tokenUTXOs = generateUTXOs(TOKEN_ASSET_ID, wallets[0].compressed);
-        const omniverseTransformer = await OmniverseTransformerBeacon.deploy(
-            TOKEN_ASSET_ID,
-            token.target,
-            wallets[0].publicKey,
-            gasUTXOs.concat(tokenUTXOs),
-            poseidon.target,
-            eip712.target
-        );
-
-        // State keeper
-        const MockStateKeeper = await hre.ethers.getContractFactory(
-            'MockStateKeeperBeacon'
-        );
-        const stateKeeper = await MockStateKeeper.deploy();
-
-        // Local entry
-        const MockLocalEntry =
-            await hre.ethers.getContractFactory('MockLocalEntry');
-        const localEntry = await MockLocalEntry.deploy();
-
-        await omniverseTransformer.setLocalEntry(localEntry.target);
-        await omniverseTransformer.setStateKeeper(stateKeeper.target);
-
-        return {
-            stateKeeper,
-            localEntry,
-            eip712,
-            poseidon,
-            omniverseTransformer,
-            token,
-            transformer: { signer: signers[0], wallet: wallets[0] },
-            user: { signer: signers[1], wallet: wallets[1] }
-        };
-    }
-
-    async function deployOmniverseTransformerWithConvertingToLocalTxSubmitted() {
-        const {
-            omniverseTransformer,
-            token,
-            transformer,
-            stateKeeper,
-            user
-        } = await deployOmniverseTransformer();
-
-        await stateKeeper.setIsIncluded(true);
-
-            let transfer: utils.Transfer = getTransferTx(
-                user.wallet.compressed,
-                transformer.wallet.compressed
+    describe('private to publick key', function () {
+     
+        it('test ', async function () {
+            const privateKey = "0x0000000000000000000000000000000000000000000000000000000000000001"
+            var pubKey = ecdsa.publicKeyCreate(
+                Buffer.from(privateKey.substring(2), 'hex'),
+                false
             );
-            const signature = await utils.typedSignTransfer(
-                user.signer,
-                transfer
+            var pubKeyStr = '0x' + Buffer.from(pubKey).toString('hex').substring(2);
+            //console.info(privateKey)
+            console.info(Buffer.from(pubKey).toString('hex'))
+            console.info(pubKeyStr)
+
+            let accounts =  hre.config.networks.hardhat.accounts;
+            const wallet = hre.ethers.HDNodeWallet.fromPhrase(
+                accounts.mnemonic,
+                accounts.password,
+                `${accounts.path}/${0}`
             );
-            transfer.signature = signature;
-
-        return {
-            omniverseTransformer,
-            token,
-            transformer,
-            stateKeeper,
-            user
-        }
-    }
-
-    describe('Deployment', function () {
-        it('Should set the right parameters', async function () {
-            const { omniverseTransformer, token } = await loadFixture(
-                deployOmniverseTransformer
+            console.info("------------")
+            var pubKey1 = ecdsa.publicKeyCreate(
+                Buffer.from(wallet.privateKey.substring(2), 'hex'),
+                false
             );
+            let publicKey = '0x' + Buffer.from(pubKey1).toString('hex').substring(2);
+            let compressed = '0x' + wallet.publicKey.substring(4)
+            console.info(publicKey)
+            console.info(compressed)
+            //console.info(wallet.publicKey)
 
-            expect(await omniverseTransformer.getAssetId()).to.equal(
-                TOKEN_ASSET_ID
-            );
-            expect(await omniverseTransformer.getLocalTokenAddress()).to.equal(
-                token.target
-            );
-        });
-    });
-
-    describe('Convert to Omniverse', function () {
-        it('Should revert with not enough tokens approved', async function () {
-            const { omniverseTransformer, token, transformer, user } =
-                await loadFixture(deployOmniverseTransformer);
-            const kprice = hre.ethers.toBigInt(await omniverseTransformer.getKprice())
-            const PRICE_DECIMAL_NUM = hre.ethers.toBigInt(1e8)
-            const uAmount = kprice * hre.ethers.toBigInt(TOKEN_NUM)/PRICE_DECIMAL_NUM
-
-            await expect(
-                omniverseTransformer
-                    .connect(user.signer)
-                    .convertToOmniverse(user.wallet.compressed, TOKEN_NUM)
-            )
-                .to.be.revertedWithCustomError(
-                    token,
-                    'ERC20InsufficientAllowance'
-                )
-                .withArgs(
-                    omniverseTransformer.target,
-                    await token.allowance(
-                        transformer.signer.address,
-                        omniverseTransformer.target
-                    ),
-                    uAmount
-                );
-        });
-
-        it('Should revert with sender does not have enough token to convert', async function () {
-            const { omniverseTransformer, token, transformer, user } =
-                await loadFixture(deployOmniverseTransformer);
-                const kprice = hre.ethers.toBigInt(await omniverseTransformer.getKprice())
-                const PRICE_DECIMAL_NUM = hre.ethers.toBigInt(1e8)
-                const uAmount = kprice * hre.ethers.toBigInt(TOKEN_NUM)/PRICE_DECIMAL_NUM
-            console.info("uAmount",uAmount)
-          
-            await token
-                .connect(user.signer)
-                .approve(omniverseTransformer.target, uAmount);
-            await expect(
-                omniverseTransformer
-                    .connect(user.signer)
-                    .convertToOmniverse(user.wallet.compressed, TOKEN_NUM)
-            )
-                .to.be.revertedWithCustomError(
-                    token,
-                    'ERC20InsufficientBalance'
-                )
-                .withArgs(
-                    user.signer.address,
-                    await token.balanceOf(user.signer.address),
-                    uAmount
-                );
-        });
-
-        it('Should pass if the sender has enough tokens, approves enough tokens, and the transformer has enough UTXOs to transfer', async function () {
-            
-            const { omniverseTransformer, token, user } = await loadFixture(
-                deployOmniverseTransformer
-            );
-            const kprice = hre.ethers.toBigInt(await omniverseTransformer.getKprice())
-            const PRICE_DECIMAL_NUM = hre.ethers.toBigInt(1e8)
-            const uAmount = kprice * hre.ethers.toBigInt(TOKEN_NUM)/PRICE_DECIMAL_NUM
-            await token.mint(user.signer.address, uAmount);
-            await token
-                .connect(user.signer)
-                .approve(omniverseTransformer.target, uAmount);
-            await expect(omniverseTransformer
-                .connect(user.signer)
-                .convertToOmniverse(user.wallet.compressed, TOKEN_NUM)).to.emit(omniverseTransformer, "LocalToOmniverse");;
-            const tx = await omniverseTransformer.getUnsignedTx();
-            expect(tx.txIndex).to.equal('0');
-            expect(tx.unsignedTx.txid).not.to.equal(
-                '0x0000000000000000000000000000000000000000000000000000000000000000'
-            );
-            expect(await omniverseTransformer.getLocalToOmniverseTxNumber(user.signer.address)).to.equal(1);
-            expect((await omniverseTransformer.getLocalToOmniverseRecords(user.signer.address, 0)).length).to.equal(1);
-            expect((await omniverseTransformer.getLocalToOmniverseRecords(user.signer.address, 1)).length).to.equal(1);
-            expect((await omniverseTransformer.getLocalToOmniverseRecords(user.signer.address, 10)).length).to.equal(1);
-        });
+        })
+       
     });
     
 });
