@@ -1,0 +1,1 @@
+forge script script/AAScript.s.sol:AAScript  --rpc-url http://3.236.195.117:8998/ --broadcast

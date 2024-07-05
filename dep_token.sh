@@ -1,0 +1,1 @@
+forge create --rpc-url http://3.236.195.117:8998/ --account eth1 contracts/tests/Token.sol:Token

@@ -6,3 +6,5 @@ typechain-types
 out
 lib
 cache_forge
+.env
+broadcast

@@ -40,6 +40,7 @@ contract UKTransformerTest is Test {
     OmniverseSysConfigAA config;
     OmniverseUKTransformerBeacon  ukTransformer;
     VmSafe.Wallet  wallet;
+    
     function setUp() public {
         //create wallet
         wallet = vm.createWallet(PRI_KEY);
