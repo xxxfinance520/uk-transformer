@@ -6,7 +6,7 @@ import "../contracts/OmniverseUKTransformerBeacon.sol";
 import "../contracts/lib/omniverse-aa/LocalEntry.sol";
 contract AAScript is Script {
     
-    address aa =  0x47C84c0B3c2452B6C22B9c07cac500fBA97f7Fa3;
+    address aa =  0x8FB02eAF3C0d8029D0b513805e15f3d64C32526c;
 
     function getSignature(uint priKey, address ukTransformer) internal returns (bytes memory signature) {
          bytes memory rawData = abi.encodePacked(OMNIVERSE_AA_SC_PREFIX, "0x", Utils.bytesToHexString(abi.encodePacked(ukTransformer)), ", chain id: ", Strings.toString(block.chainid));
@@ -21,10 +21,11 @@ contract AAScript is Script {
         vm.startBroadcast(deployerPrivateKey);
         bytes memory signature = getSignature(deployerPrivateKey, address(aa));
         bytes memory pubKey = getPubKey(wallet);
+        //OmniverseUKTransformerBeacon(0xd03A47C67F69880eA27Fd48da4600b2e35D349aC).register(pubKey, signature);
         OmniverseUKTransformerBeacon(aa).register(pubKey, signature);
         vm.stopBroadcast();
     }
-
+  
     function getPubKey(VmSafe.Wallet memory wallet) internal returns(bytes memory pubKey) {
         bytes memory  b1 = toBytes0(wallet.publicKeyX);
         bytes memory  b2 = toBytes0(wallet.publicKeyY);

@@ -120,7 +120,7 @@ contract UKTransformerTest is Test {
     }
 
     function test_convertToOmniverse() public {
-       uint128 amount = 1000;
+       uint128 amount = 1e12;
        uint128 uAmount = amount * ukTransformer.getKprice() / ukTransformer.getDenominatorOfPrice();
        localToken.mint(wallet.addr, uAmount);
        localToken.approve(address(ukTransformer), uAmount);
@@ -132,6 +132,35 @@ contract UKTransformerTest is Test {
        assert(txNumber == 1);
        ToOmniverseRecord[] memory records = ukTransformer.getLocalToOmniverseRecords( wallet.addr, 0);
        assert(records.length == 1);
+    }
+
+    function test_convertToOmniverseReturn() public {
+       uint128 amount = 1e6;
+       uint128 uAmount = amount * ukTransformer.getKprice() / ukTransformer.getDenominatorOfPrice();
+       localToken.mint(wallet.addr, uAmount);
+       localToken.approve(address(ukTransformer), uAmount);
+       ukTransformer.convertToOmniverse( bytes32(wallet.publicKeyX), amount);
+       (uint256 txIndex, OmniverseTxWithTxid memory unsignedTx)  = ukTransformer.getUnsignedTx();
+       assert(txIndex == 0);
+       assert(unsignedTx.txid == bytes32(0));
+       uint256 txNumber = ukTransformer.getLocalToOmniverseTxNumber(wallet.addr);
+       assert(txNumber == 0);
+    }
+
+    function test_convertToOmniverseTruncation() public {
+       uint128 amount = 1e7+1e6;
+       uint128 uAmount = amount * ukTransformer.getKprice() / ukTransformer.getDenominatorOfPrice();
+       localToken.mint(wallet.addr, uAmount);
+       localToken.approve(address(ukTransformer), uAmount);
+       ukTransformer.convertToOmniverse( bytes32(wallet.publicKeyX), amount);
+       (uint256 txIndex, OmniverseTxWithTxid memory unsignedTx)  = ukTransformer.getUnsignedTx();
+       assert(txIndex == 0);
+       assert(unsignedTx.txid != bytes32(0));
+       uint256 txNumber = ukTransformer.getLocalToOmniverseTxNumber(wallet.addr);
+       assert(txNumber == 1);
+       ToOmniverseRecord[] memory records = ukTransformer.getLocalToOmniverseRecords( wallet.addr, 0);
+       assert(records.length == 1);
+       assertEq(records[0].amount, 1e7);
     }
 
     function test_setPrice() public {

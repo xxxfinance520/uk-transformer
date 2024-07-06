@@ -113,6 +113,9 @@ contract OmniverseUKTransformerBeacon is Ownable,OmniverseAABeacon, IOmniverseUK
     function convertToOmniverse(bytes32 recipient, uint128 amount) external {
         uint128 uAmount =  amount * kPrice /denominatorOfPrice; 
         amount = uAmount * denominatorOfPrice / kPrice;
+        if (amount == 0) {
+            return ;
+        }
         IERC20(localTokenAddress).transferFrom(msg.sender, address(this), uAmount);
         Types.Output[] memory outputs = new Types.Output[](1);
         outputs[0] = Types.Output(
