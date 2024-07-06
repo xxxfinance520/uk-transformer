@@ -1,1 +1,0 @@
-forge script script/DeployAA.s.sol:DeployAA  --rpc-url http://3.236.195.117:8998/ --broadcast

@@ -6,7 +6,7 @@ import "../contracts/OmniverseUKTransformerBeacon.sol";
 import "../contracts/lib/omniverse-aa/LocalEntry.sol";
 contract AAScript is Script {
     
-    address aa =  0x4b76D491FF0DeA9a30aC1A5f1cA59b0FD59A3e5F;
+    address aa =  0x47C84c0B3c2452B6C22B9c07cac500fBA97f7Fa3;
 
     function getSignature(uint priKey, address ukTransformer) internal returns (bytes memory signature) {
          bytes memory rawData = abi.encodePacked(OMNIVERSE_AA_SC_PREFIX, "0x", Utils.bytesToHexString(abi.encodePacked(ukTransformer)), ", chain id: ", Strings.toString(block.chainid));

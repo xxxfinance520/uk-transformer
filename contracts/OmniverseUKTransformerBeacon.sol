@@ -16,9 +16,9 @@ contract OmniverseUKTransformerBeacon is Ownable,OmniverseAABeacon, IOmniverseUK
     using EnumerableTxRecord for EnumerableTxRecord.Bytes32ToOmniToLocalRecord;
     using EnumerableSet for EnumerableSet.Bytes32Set;
     // price of k
-    uint128 private kPrice = 1e7;
+    uint128 private kPrice = 1000;
     // the denominator of price
-    uint128 private denominatorOfPrice = 1e8;
+    uint128 private denominatorOfPrice = 1e10;
     // Omniverse asset id
     bytes32 omniAssetId;
     // ERC20 token address
@@ -111,14 +111,8 @@ contract OmniverseUKTransformerBeacon is Ownable,OmniverseAABeacon, IOmniverseUK
      * @param amount How many tokens will be converted to Omniverse assets
      */
     function convertToOmniverse(bytes32 recipient, uint128 amount) external {
-        uint128 uAmount;
-        uint128 molecule = amount * kPrice;
-        uint128 remainder  = molecule % denominatorOfPrice;
-        if (remainder == 0) {
-            uAmount = molecule / denominatorOfPrice;
-        } else {
-            uAmount = (molecule+remainder) / denominatorOfPrice ;
-        }
+        uint128 uAmount =  amount * kPrice /denominatorOfPrice; 
+        amount = uAmount * denominatorOfPrice / kPrice;
         IERC20(localTokenAddress).transferFrom(msg.sender, address(this), uAmount);
         Types.Output[] memory outputs = new Types.Output[](1);
         outputs[0] = Types.Output(
