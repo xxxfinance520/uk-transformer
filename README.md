@@ -4,8 +4,7 @@
 1. 通过合约升级KARANA价格不可更改
 2. 升级为KARANA后不可通过合约降级为USDT
 3. KARANA/USDT价格精度低于0.000000001
-## 问题
-1. 前端如何从metamask获取Omniverse 地址
+
 ## test
 ```bash
 forge test -vvv
