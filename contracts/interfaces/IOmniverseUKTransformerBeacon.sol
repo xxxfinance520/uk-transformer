@@ -63,6 +63,11 @@ interface IOmniverseUKTransformerBeacon {
     function getLocalTokenAddress() external view returns (address localToken);
 
     /**
+     * @notice Add UTXO  to AAContract
+     * @param _utxos UTXO
+     */
+    function deposit(Types.UTXO[] memory _utxos) external ;
+    /**
      * @notice Convert local tokens to Omniverse assets
      * @param recipient Who will receive Omniverse assets
      * @param amount How many tokens will be converted to Omniverse assets

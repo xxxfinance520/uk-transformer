@@ -15,6 +15,7 @@ uint256 constant PAGE_NUM = 10;
 contract OmniverseUKTransformerBeacon is Ownable,OmniverseAABeacon, IOmniverseUKTransformerBeacon {
     using EnumerableTxRecord for EnumerableTxRecord.Bytes32ToOmniToLocalRecord;
     using EnumerableSet for EnumerableSet.Bytes32Set;
+    using EnumerableUTXOMap for EnumerableUTXOMap.Bytes32ToUTXOMap;
     // price of k
     uint128 private kPrice = 1000;
     // the denominator of price
@@ -104,6 +105,23 @@ contract OmniverseUKTransformerBeacon is Ownable,OmniverseAABeacon, IOmniverseUK
         localToken = localTokenAddress;
     }
 
+    /**
+     * @notice See {IOmniverseUKTransformerBeacon - deposit}
+     * Add UTXO to AAContract
+     * @param _utxos UTXO
+     */
+    function deposit(Types.UTXO[] memory _utxos) external {
+        if (AASignerAddr != msg.sender) {
+            revert SenderNotRegistered(msg.sender);
+        }
+        for (uint i = 0; i < _utxos.length; i++) {
+            bytes32 key = keccak256(
+                abi.encodePacked(_utxos[i].txid, _utxos[i].index)
+            );
+            assetIdMapToUTXOSet[_utxos[i].assetId].set(key, _utxos[i]);
+        }
+    }
+    
     /**
      * @notice See {IOmniverseUKTransformerBeacon - convertToOmniverse}
      * Convert local tokens to Omniverse assets

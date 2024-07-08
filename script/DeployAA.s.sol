@@ -11,7 +11,7 @@ contract DeployAA is Script {
     address eip712 = 0x8a2Ac632A9FE20DD193C87E3d899190C817f93D1;
     bytes32 constant TOKEN_ASSET_ID =
         0x0000000000000000000000000000000000000000000000000000000000000000;
-    bytes32 constant UTOX_TX = 0x08322656be5edad0fda7e79fe757891b1b74e9e264f2c9a1a53e9a19500f1226;
+    bytes32 constant UTOX_TX = 0x35a385d7c9ff92329361d9de917d43043bafcf3f8babaa31ccf88c73a4cf1762;
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         VmSafe.Wallet memory  wallet = vm.createWallet(deployerPrivateKey);
@@ -23,7 +23,7 @@ contract DeployAA is Script {
             assetId: TOKEN_ASSET_ID,
             txid:  UTOX_TX,
             index:  1,
-            amount: 5000000000000
+            amount: 1000000000000000
         });
         OmniverseUKTransformerBeacon aa = new OmniverseUKTransformerBeacon(
             config,
