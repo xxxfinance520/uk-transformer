@@ -13,6 +13,7 @@
     2. aa合约注册到Beacon
     3. 调用aa合约方法convertToOmniverse构建omni-tx
     4. ts程序链下签名后调用submitTx
+       
 我从前端看Omniverse没有变化，这是什么原因
 ## test
 ```bash
